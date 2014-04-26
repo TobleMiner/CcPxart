@@ -1,0 +1,3 @@
+tArgs = { ... }
+os.loadAPI("advgps")
+advgps.goto(tonumber(tArgs[1]),tonumber(tArgs[2]),tonumber(tArgs[3]),tonumber(tArgs[4]))

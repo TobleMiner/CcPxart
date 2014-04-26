@@ -1,0 +1,76 @@
+--GPS-Api
+--(c) Tobias Schramm (Toble_Miner) 2013
+
+function locate()
+	
+end
+
+function goto(x,y,z,ysafe)
+	x_,y_,z_ = gps.locate(10, false)
+	height_diff = math.floor(ysafe - y_)
+	up = true
+	if(height_diff < 0) then
+		up = false
+	end
+	for j=1,math.abs(height_diff) do
+		if(up) then
+			turtle.up()
+		else
+			turtle.down()
+		end
+	end
+	x_old,y_old,z_old = gps.locate(10, false)
+	turtle.dig() --Prevent false facing-detection-results
+	turtle.forward()
+	x_new,y_new,z_new = gps.locate(10, false)
+	turn_right = true
+	if(x_old < x_new) then
+		turn_right = true
+		if(x < x_new) then
+			turtle.turnRight()
+			turtle.turnRight()
+			if(z > z_new) then	
+				turn_right = false
+			end
+		end
+	elseif(x_old == x_new) then
+		turtle.turnRight()
+		goto(x,y,z,ysafe)
+		return
+	elseif(x_old > x_new) then
+		turn_right = false
+		if(x > x_new) then
+			turtle.turnRight()
+			turtle.turnRight()
+			if(z > z_new) then	
+				turn_right = true
+			end
+		end
+	end
+	--print("X len: "..tostring(math.abs(x-x_new).."  "..tostring(x).."  "..tostring(x_new)))
+	--print("Z len: "..tostring(math.abs(z-z_new).."  "..tostring(z).."  "..tostring(z_new)))
+	for i=1,math.abs(x - x_new) do
+		turtle.forward()
+	end
+	if(turn_right) then
+		turtle.turnRight()
+	else
+		turtle.turnLeft()
+	end
+	for i=1,math.abs(z - z_new) do
+		turtle.forward()
+	end
+	goDown = false
+	if(y_new > y) then
+		goDown = true
+	end
+	diff_y = math.abs(y - y_new)
+	for i=1,diff_y do
+		if(goDown) then turtle.down() else turtle.up() end
+	end
+	x_now,y_now,z_now = gps.locate()
+	if(x_now ~= x or y_now ~= y or z_now ~= z) then
+		print("advgs:ERROR: Failed reaching desired GPS-Position! Difference:"..tostring(x - x_now)..";"..tostring(y - y_now)..";"..tostring(z - z_now))
+		goto(x, y, z, ysafe)
+	end
+end

@@ -1,0 +1,197 @@
+tArgs = { ... }
+os.loadAPI("advgps")
+function RGBtoHSV(rgb)
+	red = rgb[1]/255
+	green = rgb[2]/255
+	blue = rgb[3]/255
+	maxv = math.max(red,math.max(green,blue))
+	minv = math.min(red,math.min(green,blue))
+	h = 0
+	if(maxv == minv) then
+	elseif(red == maxv) then
+		h = 60*((green-blue)/(maxv-minv))
+	elseif(green == maxv) then
+		h = 60*(2+(blue-red)/(maxv-minv))				
+	else
+		h = 60*(4+(red-green)/(maxv-minv))
+	end
+	if(h < 0) then
+		h = h + 360
+	end
+	s = 0
+	if(maxv ~= 0) then
+		s = (maxv-minv)/maxv
+	end
+	v = maxv
+	return {h,s,v}
+end
+
+function getFacing()
+	x,y,z = gps.locate()
+	turtle.forward()
+	tmpx,tmpy,tmpz = gps.locate()
+	turtle.turnRight()
+	turtle.turnRight()
+	turtle.forward()
+	turtle.turnRight()
+	turtle.turnRight()
+	diffx = x-tmpx
+	diffz = z-tmpz
+	if(diffz > 0) then
+		return 0
+	elseif(diffx < 0) then
+		return 1
+	elseif(diffz < 0) then
+		return 2
+	elseif(diffx > 0) then
+		return 3
+	end
+end
+
+function setFacing(cur,want)
+	diff = want - cur
+	left = false
+	if(diff < 0) then
+		left = true
+	end
+	for i=1,math.abs(diff) do
+		if(left) then
+			turtle.turnLeft()
+		else
+			turtle.turnRight()
+		end
+	end
+end
+
+flhndl = fs.open(tArgs[1],"rb")
+data = {}
+while true do
+	byt = flhndl.read()
+	if(byt == nil) then break end
+	table.insert(data,byt)
+end
+
+offset = data[11] + bit.blshift(data[12],8) + bit.blshift(data[13],16) + bit.blshift(data[14],24)
+width = data[19] + bit.blshift(data[20],8) + bit.blshift(data[21],16) + bit.blshift(data[22],24)
+height = data[23] + bit.blshift(data[24],8) + bit.blshift(data[25],16) + bit.blshift(data[26],24)
+
+--print(tostring(offset).." "..tostring(width).." "..tostring(height))
+
+lines = {}
+bytesPerLine = width*3 + ((width*3) % 4)
+lineNum = (#data-offset)/bytesPerLine
+--print(lineNum)
+--sleep(1)
+i = lineNum
+while true do
+	lineData = {}
+	for j=1,width do
+		pixel = {}
+		red = data[bytesPerLine*(i-1)+(j*3)-0+offset]
+		green = data[bytesPerLine*(i-1)+(j*3)-1+offset]
+		blue = data[bytesPerLine*(i-1)+(j*3)-2+offset]
+		pixel[1] = red
+		pixel[2] = green
+		pixel[3] = blue
+		if(red == nil or green == nil or blue == nil) then --If this happens something went wrong
+			error(tostring(red).." "..tostring(green).." "..tostring(blue).." "..i.." "..j.." "..tostring(bytesPerLine*(i-1)+(j*3)+1+offset).." "..#data)
+		end
+		table.insert(lineData,pixel)
+		--print(j.." "..tostring(red).." "..#colData)
+	end
+	table.insert(lines,lineData)
+	i = i - 1
+	--print(i)
+	if(i == 0) then break end
+end
+--print(">rape")
+--print(#lines[1])
+--sleep(1)
+if(turtle.detectDown()) then
+	turtle.up()
+end
+
+hwool = {0.0,24.1,295,220.2,55.2,115.4,343.4,0,180.0,197.8,272.5,233.7,23.7,83.7,0,0.0}
+swool = {0.0,0.7169,0.5745,0.4677,0.7797,0.6782,0.3654,0,0.0435,0.6642,0.6630,0.6738,0.6076,0.6143,1,0}
+vwool = {1.000,0.8588,0.7373,0.7882,0.6941,0.6824,0.8157,0.251,0.6314,0.5373,0.7098,0.5529,0.3098,0.2745,1,0}
+
+baseChestPos = {}
+baseChestPos["x"] = 394
+baseChestPos["y"] = 5
+baseChestPos["z"] = -318
+
+chestDirX = 2
+chestDirZ = 0
+
+pos_x_base, pos_y_base, pos_z_base = gps.locate()
+
+pixnum = 1
+for i=#lines,1,-1 do
+	for j=1,#lines[i] do
+		--gpu.setColorRGB(lines[i][j][1],lines[i][j][2],lines[i][j][3],j,i)
+		rgb = lines[i][(i % 2 ~= 0) and j or #lines[i]-(j-1)]
+		hsv = RGBtoHSV(rgb)
+		h_w = hsv[1]
+		s_w = hsv[2]
+		v_w = hsv[3]
+		print(tostring(pixnum).."->"..tostring(h_w))
+		id = 100
+		diff = 360
+		if(s_w <= 0.20) then --grayscale
+			id = 16
+			if(v_w >= 0.30 and v_w < 0.60) then
+				id = 8
+			elseif(v_w >= 0.60 and v_w < 0.80) then
+				id = 9
+			elseif(v_w >= 0.80) then
+				id = 1
+			end
+		elseif(v_w < 0.25) then
+			id = 16
+		end
+		if(id > 16) then
+			for k,v in ipairs(hwool) do
+				diff_l = math.abs(h_w-v)
+				if(diff_l < diff) then
+					diff = diff_l
+					id = k
+				elseif(diff_l == diff) then
+					lastdiffs = math.abs(hsv[2]-swool[id])
+					curdiffs = math.abs(hsv[2]-swool[k])
+					if(curdiffs < lastdiffs)  then
+						id = k
+					elseif(curdiffs == lastdiffs) then
+						lastdiffv = math.abs(hsv[3]-vwool[id])
+						curdiffv = math.abs(hsv[3]-vwool[k])
+						if(curdiffv < lastdiffv) then
+							id = k
+						end
+					end
+				end
+			end
+		end
+		turtle.select(id)
+		if(turtle.getItemCount(id) == 0) then
+			facingLast = getFacing()
+			posx, posy, posz = gps.locate()
+			chestPosX = baseChestPos["x"] + chestDirX * id
+			chestPosY = baseChestPos["y"]
+			chestPosZ = baseChestPos["z"] + chestDirZ * id
+			print(tostring(chestPosX)..";"..tostring(chestPosY)..";"..tostring(chestPosZ))
+			advgps.goto(chestPosX,chestPosY,chestPosZ,chestPosY+5+#lines-i)
+			turtle.suckDown(64)
+			print(tostring(posx)..";"..tostring(posy)..";"..tostring(posz))
+			advgps.goto(posx,posy,posz,5+#lines-i)
+			facingNow = getFacing()
+			setFacing(facingNow,facingLast)
+		end
+		turtle.placeDown()
+		if(j ~= #lines[i]) then
+			turtle.forward()
+		end
+		pixnum = pixnum + 1
+	end
+	turtle.up()
+	turtle.turnLeft()
+	turtle.turnLeft()
+end

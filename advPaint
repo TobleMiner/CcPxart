@@ -75,13 +75,9 @@ offset = data[11] + bit.blshift(data[12],8) + bit.blshift(data[13],16) + bit.bls
 width = data[19] + bit.blshift(data[20],8) + bit.blshift(data[21],16) + bit.blshift(data[22],24)
 height = data[23] + bit.blshift(data[24],8) + bit.blshift(data[25],16) + bit.blshift(data[26],24)
 
---print(tostring(offset).." "..tostring(width).." "..tostring(height))
-
 lines = {}
 bytesPerLine = width*3 + ((width*3) % 4)
 lineNum = (#data-offset)/bytesPerLine
---print(lineNum)
---sleep(1)
 i = lineNum
 while true do
 	lineData = {}
@@ -97,16 +93,11 @@ while true do
 			error(tostring(red).." "..tostring(green).." "..tostring(blue).." "..i.." "..j.." "..tostring(bytesPerLine*(i-1)+(j*3)+1+offset).." "..#data)
 		end
 		table.insert(lineData,pixel)
-		--print(j.." "..tostring(red).." "..#colData)
 	end
 	table.insert(lines,lineData)
 	i = i - 1
-	--print(i)
 	if(i == 0) then break end
 end
---print(">rape")
---print(#lines[1])
---sleep(1)
 if(turtle.detectDown()) then
 	turtle.up()
 end
@@ -128,7 +119,6 @@ pos_x_base, pos_y_base, pos_z_base = gps.locate()
 pixnum = 1
 for i=#lines,1,-1 do
 	for j=1,#lines[i] do
-		--gpu.setColorRGB(lines[i][j][1],lines[i][j][2],lines[i][j][3],j,i)
 		rgb = lines[i][(i % 2 ~= 0) and j or #lines[i]-(j-1)]
 		hsv = RGBtoHSV(rgb)
 		h_w = hsv[1]
